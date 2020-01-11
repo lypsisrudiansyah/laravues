@@ -7,6 +7,40 @@
 require('./bootstrap');
 
 window.Vue = require('vue');
+import moment from 'moment';
+import {Form, HasError, AlertError} from 'vform';
+
+window.Form = Form; 
+Vue.component(HasError.name, HasError)
+Vue.component(AlertError.name, AlertError)
+
+import Vue from 'vue'
+import VueRouter from 'vue-router'
+Vue.use(VueRouter)
+
+let routes = [
+    { path: '/dashboard', component: require('./components/Dashboard.vue').default },
+    { path: '/users', component: require('./components/Users.vue').default },
+    { path: '/profile', component: require('./components/Profile.vue').default },
+]
+
+const router = new VueRouter({
+    mode: 'history',
+    routes, // short for `routes: routes`
+    // linkActiveClass: "active",
+    linkExactActiveClass: "active"
+})
+
+Vue.filter('upText', function(text) {
+    return text.charAt(0).toUpperCase() + text.slice(1)
+})
+
+moment.locale('id');   
+
+Vue.filter('myDate', function(created) {
+    return moment(created).format('lll'); 
+})
+
 
 /**
  * The following block of code may be used to automatically register your
@@ -19,7 +53,8 @@ window.Vue = require('vue');
 // const files = require.context('./', true, /\.vue$/i)
 // files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default))
 
-Vue.component('example-component', require('./components/ExampleComponent.vue').default);
+Vue.component('example-component', require('./components/ExampleComponent.vue'));
+// Vue.component('example-component', require('./components/ExampleComponent.vue').default);
 
 /**
  * Next, we will create a fresh Vue application instance and attach it to
@@ -29,4 +64,5 @@ Vue.component('example-component', require('./components/ExampleComponent.vue').
 
 const app = new Vue({
     el: '#app',
+    router 
 });
