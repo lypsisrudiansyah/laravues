@@ -7,7 +7,7 @@
                 <h3 class="card-title">Users</h3>
 
                 <div class="card-tools">
-                  <button class="btn btn-success" data-toggle="modal" data-target="#addNew">Add New <i class="fa fa-user-plus fa-fw"></i></button>
+                  <button class="btn btn-success" @click="newModal">Add New <i class="fa fa-user-plus fa-fw"></i></button>
                 </div>
               </div>
               <!-- /.card-header -->
@@ -32,9 +32,9 @@
                       <td>{{user.type | upText}}</td>
                       <td>{{user.created_at | myDate}}</td>
                       <td>
-                        <a href="javascript:void(0)"><i class="fa fa-edit"></i></a>
+                        <a href="javascript:void(0)" @click="editModal(user)"><i class="fa fa-edit"></i></a>
                         |
-                        <a href="javascript:void(0)"><i class="fa fa-trash red"></i></a>
+                        <a href="javascript:void(0)" @click="deleteUser(user.id)"><i class="fa fa-trash red"></i></a>
                       </td>
                     </tr>
                   </tbody>
@@ -50,12 +50,13 @@
           <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content">
               <div class="modal-header">
-                <h5 class="modal-title" id="addNewLabel">Add New</h5>
+                <h5 v-show="editMode" class="modal-title" id="addNewLabel">Update User's Info</h5>
+                <h5 v-show="!editMode" class="modal-title" id="addNewLabel">Add New</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                   <span aria-hidden="true">&times;</span>
                 </button>
               </div>
-              <form @submit.prevent="createUser">
+              <form @submit.prevent="editMode ? updateUser() : createUser()">
                 <div class="modal-body">
                   <div class="form-group">
                     <input v-model="form.name" type="text" name="name" placeholder="Name"
@@ -96,7 +97,8 @@
               
                 <div class="modal-footer">
                   <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                  <button type="submit" class="btn btn-primary">Create</button>
+                  <button v-show="editMode" type="submit" class="btn btn-success">Update</button>
+                  <button v-show="!editMode" type="submit" class="btn btn-success">Create</button>
                 </div>
               </form>
             </div>
@@ -112,8 +114,10 @@
         data() {
           /* Data Function Returning Object */
           return { 
+            editMode: false,
             users: {},
             form: new Form({
+               id: '', 
                name: '',
                email: '',
                password: '',
@@ -125,18 +129,96 @@
         }, 
 
         methods: {
-          loadUsers() {
-            axios.get('api/user').then(({data}) => ( this.users = data.data ))
+          updateUser() {
+            this.$Progress.start();
+            this.form.put('/api/user/'+this.form.id)
+            .then(() => {
+                $('#addNew').modal('hide');
+                Swal.fire(
+                  'Updated',
+                  'User\'s Info Successfully Updated.',
+                  'success'
+                )
+                Fire.$emit('AfterCreated');
+                this.$Progress.finish();
+            })
+            .catch(() => {
+              // Fail
+              this.$Progress.fail();
+            })
+            // console.log("Editing Data");
+          },
+          editModal(user) {
+            this.editMode = true;
+            this.form.reset();
+            $('#addNew').modal('show');
+            this.form.fill(user);
+          },
+          newModal() {
+            this.editMode = false; 
+            this.form.reset();
+            $('#addNew').modal('show');
+          },
+
+          deleteUser(id) {
+            Swal.fire({
+              title: 'Are you sure?',
+              text: "You won't be able to revert this!",
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#3085d6',
+              cancelButtonColor: '#d33',
+              confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+              if (result.value) {
+                // Send Request to the server      
+                this.form.delete('api/user/'+id).then(() => {
+                  
+                    Swal.fire(
+                      'Deleted!',
+                      'Your file has been deleted.',
+                      'success'
+                    )
+                    Fire.$emit('AfterCreated');
+                }).catch(() => {
+                  Swal.fire("Failed!", "There Was Something Wrong", "warning");
+                });
+              }        
+            })
           },
           
-          createUser() {
-             this.form.post('/api/user')
-              .then(({data}) => { console.log(data) })
+          loadUsers() {
+            this.$Progress.start();
+            axios.get('api/user').then(({data}) => ( this.users = data.data ));
+            this.$Progress.finish();
+          },
+          
+          createUser() { 
+            this.$Progress.start();
+            this.form.post('/api/user')
+            .then(() => {
+              /* this.form.post('/api/user')
+                .then(({data}) => { console.log(data) }); */
+              Fire.$emit('AfterCreated');
+              $('#addNew').modal('hide');
+              Toast.fire({
+                icon: 'success',
+                title: 'User Created Successfully'
+              });
+              this.$Progress.finish();
+            })
+            .catch(() => {
+              this.$Progress.fail();
+            });
           }
         },
 
         created() {
           this.loadUsers();
+          Fire.$on('AfterCreated', () => {
+            this.loadUsers();
+          });
+          // setInterval(() => this.loadUsers(), 3000);
         },
 
         mounted() {
